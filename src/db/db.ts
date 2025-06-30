@@ -1,14 +1,14 @@
-// db.ts
+
 import mysql from 'mysql2/promise';
 
 export const createConnection = async () => {
   try {
     // First connect without database to create it if needed
     const initialConnection = await mysql.createConnection({
-      host: "process.env.host",
-      user: "process.env.username",
-      password: "process.env.password"
-    });
+      host: process.env.host,
+      user: process.env.name,
+      password: process.env.password
+    }); 
     
     // Create database if it doesn't exist
     await initialConnection.execute('CREATE DATABASE IF NOT EXISTS job');
@@ -16,9 +16,9 @@ export const createConnection = async () => {
     
     // Now connect to the specific database
     const connection = await mysql.createConnection({
-      host: "process.env.host",
-      user: "process.env.username",
-      password: "process.env.password",
+      host: process.env.host,
+      user: process.env.name,
+      password: process.env.password,
       database: "job"
     });
     
@@ -29,4 +29,3 @@ export const createConnection = async () => {
     throw error;
   }
 };
-

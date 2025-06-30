@@ -42,6 +42,50 @@ export const LoginValidation = Joi.object({
     }),
 })
 
+export const JobValidation = Joi.object({
+    title: Joi.string().required().trim().min(2).max(100).messages({
+        "string.empty": "Job title is required",
+        "string.min": "Job title must be at least 2 characters long",
+        "string.max": "Job title must not exceed 100 characters",
+        "any.required": "Job title is required"
+    }),
+    description: Joi.string().required().trim().min(10).max(1000).messages({
+        "string.empty": "Job description is required",
+        "string.min": "Job description must be at least 10 characters long",
+        "string.max": "Job description must not exceed 1000 characters",
+        "any.required": "Job description is required"
+    }),
+    company_name: Joi.string().required().trim().min(2).max(100).messages({
+        "string.empty": "Company name is required",
+        "string.min": "Company name must be at least 2 characters long",
+        "string.max": "Company name must not exceed 100 characters",
+        "any.required": "Company name is required"
+    }),
+    location: Joi.string().required().trim().min(2).max(100).messages({
+        "string.empty": "Job location is required",
+        "string.min": "Job location must be at least 2 characters long",
+        "string.max": "Job location must not exceed 100 characters",
+        "any.required": "Job location is required"
+    }),
+    salary_range: Joi.string().min(0).required().messages({
+        "number.base": "Salary must be a number",
+        "number.min": "Salary must be at least 0",
+        "any.required": "Salary is required"
+    }),
+    job_type: Joi.string().required().valid('Full-Time', 'Part-Time', 'Internship', 'Contract').messages({
+        "string.empty": "Job type is required",
+        "any.only": "Job type must be one of 'Full-Time', 'Part-Time', 'Internship', or 'Contract'",
+        "any.required": "Job type is required"
+    }),
+    hr_id: Joi.number().integer().required().messages({
+        "number.base": "HR ID must be a number",
+        "number.integer": "HR ID must be an integer", 
+        "any.required": "HR ID is required"
+    })
+})
+
+
+
 // Joi validation middleware
 export const validateWithJoi = (schema: Joi.ObjectSchema) => {
     return (req: Request, res: Response, next: NextFunction): void => {
