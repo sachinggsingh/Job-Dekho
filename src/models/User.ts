@@ -9,6 +9,7 @@ export interface User {
     role: 'HR' | 'jobSeeker';
     password: string;
     note?: string;
+    refreshToken?: string;
     created_at?: Date;
     updated_at?: Date;
 }
@@ -25,6 +26,7 @@ export const createUsersTable = async () => {
                 role ENUM('HR', 'jobSeeker') NOT NULL,
                 password VARCHAR(255) NOT NULL,
                 note VARCHAR(500) DEFAULT '',
+                refresh_token VARCHAR(500) DEFAULT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             )
@@ -62,13 +64,14 @@ export const createUser = async (userData: User): Promise<User> => {
     const connection = await createConnection();
     try {
         const [result] = await connection.execute(
-            'INSERT INTO users (name, phone_number, role, password, note) VALUES (?, ?, ?, ?, ?)',
+            'INSERT INTO users (name, phone_number, role, password, note, refresh_token) VALUES (?, ?, ?, ?, ?, ?)',
             [
                 userData.name,
                 userData.phoneNumber,
                 userData.role,
                 userData.password,
-                userData.note || ''
+                userData.note || '',
+                userData.refreshToken || null
             ]
         );
 
@@ -90,8 +93,44 @@ export const createUser = async (userData: User): Promise<User> => {
     }
 };
 
+// Set refresh token for a user by phone number
+export const setUserRefreshToken = async (phoneNumber: string, refreshToken: string) => {
+    const connection = await createConnection();
+    try {
+        await connection.execute(
+            'UPDATE users SET refresh_token = ? WHERE phone_number = ?',
+            [refreshToken, phoneNumber]
+        );
+    } catch (error) {
+        logger.error('Error setting user refresh token:', error);
+        throw error;
+    } finally {
+        await connection.end();
+    }
+};
+
+// Get refresh token for a user by phone number
+export const getUserRefreshToken = async (phoneNumber: string): Promise<string | null> => {
+    const connection = await createConnection();
+    try {
+        const [rows] = await connection.execute(
+            'SELECT refresh_token FROM users WHERE phone_number = ? LIMIT 1',
+            [phoneNumber]
+        );
+        const result = rows as { refresh_token: string }[];
+        return result.length > 0 ? result[0].refresh_token : null;
+    } catch (error) {
+        logger.error('Error getting user refresh token:', error);
+        throw error;
+    } finally {
+        await connection.end();
+    }
+};
+
 export default {
     createUsersTable,
     findUserByPhoneNumber,
-    createUser
+    createUser,
+    setUserRefreshToken,
+    getUserRefreshToken
 }; 

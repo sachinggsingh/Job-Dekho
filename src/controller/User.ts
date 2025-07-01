@@ -1,12 +1,10 @@
 import { Request, Response } from 'express';
 import { logger } from '../helpers/logger';
-import { findUserByPhoneNumber, createUser } from '../models/User';
+import { findUserByPhoneNumber, createUser, setUserRefreshToken, getUserRefreshToken } from '../models/User';
 import { hash, compare } from 'bcrypt';
 import { SignUpValidation, LoginValidation } from '../helpers/validations';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../helpers/jwt';
-
-// In-memory store for refresh tokens (use DB in production)
-const refreshTokens: string[] = [];
+import { sendMessage } from '../helpers/twillio';
 
 export const CreateAccount = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -36,18 +34,19 @@ export const CreateAccount = async (req: Request, res: Response): Promise<void> 
       return;
     }
     const hashedPassword = await hash(password, 10);
+    // JWT tokens
+    const payload = { id: undefined, phoneNumber, role };
+    const accessToken = generateAccessToken(payload);
+    const refreshToken = generateRefreshToken(payload);
     const newUser = await createUser({
       name,
       phoneNumber,
       role,
       password: hashedPassword,
-      note: note || ''
+      note: note || '',
+      refreshToken
     });
-    // JWT tokens
-    const payload = { id: newUser.id, phoneNumber: newUser.phoneNumber, role: newUser.role };
-    const accessToken = generateAccessToken(payload);
-    const refreshToken = generateRefreshToken(payload);
-    refreshTokens.push(refreshToken);
+    await setUserRefreshToken(phoneNumber, refreshToken);
     res.status(201).json({
       message: "User created successfully",
       user: {
@@ -91,7 +90,8 @@ export const LoginAccount = async (req: Request, res: Response): Promise<void> =
     const payload = { id: user.id, phoneNumber: user.phoneNumber, role: user.role };
     const accessToken = generateAccessToken(payload);
     const refreshToken = generateRefreshToken(payload);
-    refreshTokens.push(refreshToken);
+    await setUserRefreshToken(phoneNumber, refreshToken);
+    // sendMessage(phoneNumber);
     res.status(200).json({
       message: "Login successful",
       user: {
@@ -111,13 +111,18 @@ export const LoginAccount = async (req: Request, res: Response): Promise<void> =
   }
 };
 
-export const RefreshToken = (req: Request, res: Response): void => {
-  const { refreshToken } = req.body;
-  if (!refreshToken || !refreshTokens.includes(refreshToken)) {
-    res.status(403).json({ error: "Refresh token not found, login again" });
+export const RefreshToken = async (req: Request, res: Response): Promise<void> => {
+  const { refreshToken, phoneNumber } = req.body;
+  if (!refreshToken || !phoneNumber) {
+    res.status(403).json({ error: "Refresh token and phone number are required, login again" });
     return;
   }
   try {
+    const storedToken = await getUserRefreshToken(phoneNumber);
+    if (!storedToken || storedToken !== refreshToken) {
+      res.status(403).json({ error: "Refresh token not found or does not match, login again" });
+      return;
+    }
     const userData = verifyRefreshToken(refreshToken) as any;
     const newAccessToken = generateAccessToken({ id: userData.id, phoneNumber: userData.phoneNumber, role: userData.role });
     res.json({ accessToken: newAccessToken });
@@ -128,6 +133,10 @@ export const RefreshToken = (req: Request, res: Response): void => {
 
 export const LogoutAccount = async (req: Request, res: Response): Promise<void> => {
   try {
+    const { phoneNumber } = req.body;
+    if (phoneNumber) {
+      await setUserRefreshToken(phoneNumber, ''); // Clear the refresh token
+    }
     logger.info("User logged out successfully");
     res.status(200).json({ message: "Logged out successfully", success: true });
   } catch (error) {
