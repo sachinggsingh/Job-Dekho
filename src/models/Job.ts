@@ -70,7 +70,7 @@ export const createJob = async (job: Job): Promise<Job> => {
     }
 }
 
-export const getJobById = async (id: number): Promise<Job> => {
+export const getJobById = async (id: number): Promise<Job | null> => {
     const connection = await createConnection();
     try {
         const [rows]: any = await connection.execute(`SELECT * FROM jobs WHERE id = ?`, [id]);
