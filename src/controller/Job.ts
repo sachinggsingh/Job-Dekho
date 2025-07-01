@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { logger } from "../helpers/logger";
 import { createJob, getAllJobs, getJobById, updateJob, deleteJob, findJobCompanyTitleAndDescription } from "../models/Job";
 import { JobValidation } from "../helpers/validations";
-import {  deleteCache } from '../utils/cache';
+import {  deleteCache } from '../middleware/cache';
     
 export const CreateJob = async (req: Request, res: Response): Promise<void> => {
     try {

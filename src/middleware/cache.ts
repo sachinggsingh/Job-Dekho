@@ -1,5 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
-import { getCache } from '../utils/cache';
+import { redis } from '../helpers/redis';
+
+export const getCache = async(key: string) => {
+    return await redis.get(key);
+}
+
+export const deleteCache = async(key: string) => {
+    await redis.del(key);
+}
 
 // cacheKeyFn: (req) => string
 export const cacheMiddleware = (cacheKeyFn: (req: Request) => string) => async (req: Request, res: Response, next: NextFunction) => {
