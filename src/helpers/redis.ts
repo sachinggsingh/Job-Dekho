@@ -7,11 +7,11 @@ export const redis = new Redis({
   token: process.env.UPSTASH_REDIS_REST_TOKEN,
 })
 
-// Helper to set a value in Redis
-export const setRedis = async (key: string, value: string) => {
+// Helper to set a value in Redis with optional TTL (default 60s)
+export const setRedis = async (key: string, value: string, ttlSeconds: number = 60) => {
     try {
-        await redis.set(key, value);
-        logger.info(`Redis set: ${key} ${value}`);
+        await redis.set(key, value, { ex: ttlSeconds });
+        logger.info(`Redis set: ${key} ${value} (ttl: ${ttlSeconds}s)`);
         return true;
     } catch (error) {
         logger.error(`Error setting redis: ${error}`);
@@ -29,4 +29,16 @@ export const getRedis = async (key: string) => {
     logger.error(`Error getting redis: ${error}`);
     return null;
   }
+}
+
+// Helper to delete a value from Redis
+export const deleteRedis = async (key: string) => {
+    try {
+        await redis.del(key);
+        logger.info(`Redis deleted: ${key}`);
+        return true;
+    } catch (error) {
+        logger.error(`Error deleting redis: ${error}`);
+        return false;
+    }
 }

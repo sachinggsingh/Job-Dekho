@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { logger } from "../helpers/logger";
 import { createJob, getAllJobs, getJobById, updateJob, deleteJob, findJobCompanyTitleAndDescription } from "../models/Job";
 import { JobValidation } from "../helpers/validations";
-import {  deleteCache } from '../middleware/cache';
+import {  deleteCache, setCache } from '../middleware/cache';
     
 export const CreateJob = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -24,9 +24,10 @@ export const CreateJob = async (req: Request, res: Response): Promise<void> => {
             return;
         }
         // existing job already created
-        const existingJob = await findJobCompanyTitleAndDescription(title, company_name, description);
+        const existingJob = await findJobCompanyTitleAndDescription(title, company_name, description,job_type);
         if (existingJob) {
-            res.status(400).json({ error: "Job already exists with this phone number", success: false });
+            res.status(400).json({ error: `Error in creating a Job with all this fields ${title} ,
+                3 ${company_name} , ${description} and ${job_type} or it all ready exist with these fields`, success: false });
             return;
         }
 
@@ -44,18 +45,40 @@ export const CreateJob = async (req: Request, res: Response): Promise<void> => {
 
 export const GetAllJobs = async (req: Request, res: Response): Promise<void> => {
     try {
-        const jobs = await getAllJobs();
-        if(!jobs){
-            logger.error("No jobs found")
-            res.status(404).json({msg:"No jobs at all",success:false})
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 3;
+        const location = (req.query.location as string) || '';
+        const job_type = (req.query.job_type as string) || '';
+        const title = (req.query.title as string) || '';
+
+        // Fix: getAllJobs expects only one argument, so pass an object with filters if needed
+        // Use 'jobType' instead of 'job_type' to match JobSearchOptions type
+        const { jobs, total } = await getAllJobs({ page, limit, title,  job_type, location });
+
+        if (!jobs || jobs.length === 0) {
+            logger.error("No jobs found");
+            res.status(404).json({ msg: "No jobs at all", success: false });
             return;
         }
-        res.status(200).json({ jobs, success: true });
+
+        const totalPages = Math.ceil(total / limit);
+
+        // cached
+        await setCache('jobs:all', jobs);
+
+        res.status(200).json({
+            jobs,
+            page,
+            limit,
+            total,
+            totalPages,
+            success: true,
+        });
     } catch (error) {
         logger.error("Error in GetAllJobs controller", error);
-        res.status(500).json({ msg: "Internal Server error", success: false });
+        res.status(500).json({ msg: "Internal Server Error", success: false });
     }
-}
+};
 
 export const GetJobById = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -69,6 +92,8 @@ export const GetJobById = async (req: Request, res: Response): Promise<void> => 
             res.status(404).json({ error: "Job not found", success: false });
             return;
         }
+        // Populate cache for this job
+        await setCache(`job:${id}`, job);
         res.status(200).json({ job, success: true });
     } catch (error) {
         logger.error("Error in GetJobById controller", error);

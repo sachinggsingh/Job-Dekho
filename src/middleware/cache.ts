@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { redis } from '../helpers/redis';
+import { redis, setRedis } from '../helpers/redis';
 
 export const getCache = async(key: string) => {
     return await redis.get(key);
@@ -7,6 +7,10 @@ export const getCache = async(key: string) => {
 
 export const deleteCache = async(key: string) => {
     await redis.del(key);
+}
+
+export const setCache = async (key: string, value: any, ttlSeconds: number = 3600) => {
+    return await setRedis(key, JSON.stringify(value), ttlSeconds);
 }
 
 // cacheKeyFn: (req) => string

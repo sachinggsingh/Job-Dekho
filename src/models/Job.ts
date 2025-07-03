@@ -14,7 +14,13 @@ export interface Job {
     created_at?: Date;
     updated_at?: Date;
 }
-
+interface JobSearchOptions {
+    page: number;
+    limit: number;
+    title?: string;
+    location?: string;
+    job_type?: string;
+}
 export const createJobsTable = async () => {
     const connection = await createConnection();
     try {
@@ -82,19 +88,62 @@ export const getJobById = async (id: number): Promise<Job | null> => {
         await connection.end()
     }
 }
-
-export const getAllJobs = async (): Promise<Job[]> => {
+export const getAllJobs = async ({
+    page,
+    limit,
+    title = '',
+    location = '',
+    job_type = ''} :JobSearchOptions 
+): Promise<{ jobs: Job[]; total: number }> => {
     const connection = await createConnection();
-    try {
-        const [rows] = await connection.execute(`SELECT * FROM jobs ORDER BY created_at DESC`);
-        return rows as Job[];
-    } catch (error) {
-        logger.error("Error in getting All jobs", error)
-        throw error;
-    } finally {
-        await connection.end();
+
+    // ✅ Make sure these are integers
+    const parsedLimit = Number(limit);
+    const parsedPage = Number(page);
+    const offset = (parsedPage - 1) * parsedLimit;
+    const filters : string[] = [];
+    const params : any[] = [];
+    if (title) {
+        filters.push(`title LIKE ?`);
+        params.push(`%${title}%`);
     }
+    if (location) {
+        filters.push(`location LIKE ?`);
+        params.push(`%${location}%`);
+    }
+    if (job_type) {
+        filters.push(`job_type = ?`);
+        params.push(job_type);
+    }
+
+    const whereClause = filters.length > 0 ? `WHERE ${filters.join(' AND ')}` : '';
+
+    const jobQuery = `
+    SELECT * FROM jobs
+    ${whereClause}
+    ORDER BY created_at DESC
+    LIMIT ${limit} OFFSET ${offset}
+`;
+
+const countQuery = `
+    SELECT COUNT(*) as total FROM jobs
+    ${whereClause}
+`;
+
+try {
+    const [rows] = await connection.execute(jobQuery, params);
+    const [countResult] = await connection.execute(countQuery, params);
+    const total = (countResult as any)[0].total;
+
+    return { jobs: rows as Job[], total };
+} catch (error) {
+    logger.error("Error in searching jobs", error);
+    throw error;
+} finally {
+    await connection.end();
 }
+};
+
 
 export const updateJob = async (id: number, job: Partial<Job>): Promise<Job | null> => {
     const connection = await createConnection();
@@ -136,11 +185,11 @@ export const deleteJob = async (id: number): Promise<boolean> => {
     }
 }
 
-export const findJobCompanyTitleAndDescription = async (title:string,company:string,description:string):Promise<Job | null>=>{
+export const findJobCompanyTitleAndDescription = async (title:string,company:string,description:string,job_type:string):Promise<Job | null>=>{
     const connection = await createConnection();
     try {
-        const [result] = await connection.execute(`SELECT * FROM jobs WHERE title = ? AND company_name = ? AND description = ?`,
-            [title, company, description])
+        const [result] = await connection.execute(`SELECT * FROM jobs WHERE title = ? AND company_name = ? AND description = ? AND job_type = ?`,
+            [title, company, description,job_type])
             const jobs = result as Job[];
         return jobs.length > 0 ? jobs[0] : null;
     } catch (error) {
