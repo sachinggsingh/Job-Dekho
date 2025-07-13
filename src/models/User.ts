@@ -10,6 +10,7 @@ export interface User {
     password: string;
     note?: string;
     refreshToken?: string;
+    resumeUrl?: string;
     created_at?: Date;
     updated_at?: Date;
 }
@@ -26,6 +27,7 @@ export const createUsersTable = async () => {
                 role ENUM('HR', 'jobSeeker') NOT NULL,
                 password VARCHAR(255) NOT NULL,
                 note VARCHAR(500) DEFAULT '',
+                resume_url VARCHAR(255) DEFAULT NULL,
                 refresh_token VARCHAR(500) DEFAULT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -127,10 +129,28 @@ export const getUserRefreshToken = async (phoneNumber: string): Promise<string |
     }
 };
 
+export const findUserById = async (id: number): Promise<User | null> => {
+    const connection = await createConnection();
+    try {
+        const [rows] = await connection.execute(
+            'SELECT * FROM users WHERE id = ? LIMIT 1',
+            [id]
+        );
+        const users = rows as User[];
+        return users.length > 0 ? users[0] : null;
+    } catch (error) {
+        logger.error('Error finding user by id:', error);
+        throw error;
+    } finally {
+        await connection.end();
+    }
+};
+
 export default {
     createUsersTable,
     findUserByPhoneNumber,
     createUser,
     setUserRefreshToken,
-    getUserRefreshToken
+    getUserRefreshToken,
+    findUserById
 }; 

@@ -84,6 +84,14 @@ export const JobValidation = Joi.object({
     })
 })
 
+export const ResumeValidation = Joi.object({
+    fileUrl: Joi.string().uri().required().messages({
+        "string.empty": "File URL is required",
+        "string.uri": "File URL must be a valid URI",
+        "any.required": "File URL is required"
+    })
+});
+
 
 
 // Joi validation middleware

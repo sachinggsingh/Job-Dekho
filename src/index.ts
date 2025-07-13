@@ -4,15 +4,19 @@ require('dotenv').config()
 import { Request, Response } from "express";
 import cors from "cors";
 import { logger } from './helpers/logger';
+import path from 'path';
 // tables and database
 import { createConnection } from './db/db';
 import { createUsersTable } from './models/User';
 import { createJobsTable } from './models/Job';
+import { createResumesTable } from './models/Resume';
+// redis
 import { redis } from './helpers/redis';
 
 // routes
 import routerUser from './routes/User';
 import routerJob from './routes/Job'
+import routerResume from './routes/Resume';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -27,10 +31,13 @@ app.use(express.urlencoded({ extended: true }));
 app.get('/', (req: Request, res: Response) => {
   res.json({ msg: "Server running" });
 });
+// Serve static files for resumes
+// app.use('/uploads/resumes', express.static(path.join(__dirname, '../../uploads/resumes')));
 
 // API routes
 app.use('/api', routerUser);
 app.use('/api',routerJob);
+app.use('/api', routerResume);
 
 // Initialize database and tables
 const initializeDatabase = async () => {
@@ -38,6 +45,7 @@ const initializeDatabase = async () => {
     await createConnection();
     await createUsersTable();
     await createJobsTable();
+    await createResumesTable();
     logger.info("Database initialized successfully");
   } catch (error) {
     logger.error("Database initialization failed:", error);
