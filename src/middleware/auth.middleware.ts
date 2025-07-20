@@ -1,5 +1,5 @@
 import jwt, { JwtPayload } from 'jsonwebtoken';
-import {findUserById} from '../models/User';
+import { findUserById } from '../models/User';
 import { Request, Response, NextFunction } from 'express';
 import { logger } from '../helpers/logger';
 
@@ -11,6 +11,8 @@ declare global {
         }
     }
 }
+const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET || 'your-access-secret';
+
 
 export const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -18,20 +20,30 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
         const token = authHeader?.startsWith('Bearer ')
             ? authHeader.split(' ')[1]
             : req.cookies?.token;
-
         if (!token) {
             res.status(401).json({ message: 'No token provided' });
             return;
         }
 
-        const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as JwtPayload;
+        // Verify JWT
+        let decoded: JwtPayload | string;
+        try {
+            decoded = jwt.verify(token,ACCESS_TOKEN_SECRET);
+        } catch (err) {
+            logger.error('JWT verification failed:', err);
+            res.status(401).json({ message: 'Invalid or expired token' });
+            return
+        }
 
-        if (!decoded || typeof decoded !== 'object' || !decoded.id) {
-            res.status(401).json({ message: 'Invalid token' });
+        // Ensure decoded is an object and has an id
+        if (!decoded || typeof decoded !== 'object' || !('id' in decoded)) {
+            res.status(401).json({ message: 'Invalid token payload' });
             return;
         }
 
-        const user = await findUserById(decoded.id);
+        // Find user by id (ensure id is a number)
+        const userId = typeof decoded.id === 'string' ? parseInt(decoded.id, 10) : decoded.id;
+        const user = await findUserById(userId);
         if (!user) {
             res.status(401).json({ message: 'User not found' });
             return;

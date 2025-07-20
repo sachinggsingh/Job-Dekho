@@ -47,3 +47,7 @@ error.log
 
 # Ignore all .txt files
 *.txt
+
+# upload folder
+/upload
+/upload/resume

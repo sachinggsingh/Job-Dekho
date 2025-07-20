@@ -91,7 +91,7 @@ export const LoginAccount = async (req: Request, res: Response): Promise<void> =
     const accessToken = generateAccessToken(payload);
     const refreshToken = generateRefreshToken(payload);
     await setUserRefreshToken(phoneNumber, refreshToken);
-    // sendMessage(phoneNumber);
+    sendMessage(phoneNumber);
     res.status(200).json({
       message: "Login successful",
       user: {

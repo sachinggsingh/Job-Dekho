@@ -1,13 +1,22 @@
 import express from "express";
 import { UploadResume, DeleteResume } from "../controller/Resume";
-// import { authMiddleware } from "../middleware/auth.middleware";
 
 import multer from "multer";
 const router = express.Router();
 
-const upload = multer({dest:'upload/resume'})
+// Only allow PDF files
+const upload = multer({
+    dest: 'upload/resume',
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype === 'application/pdf') {
+            cb(null, true);
+        } else {
+            cb(new Error('Only PDF files are allowed!'));
+        }
+    }
+});
 
-router.post('/upload', upload.single('resume'), UploadResume);
+router.post('/upload',upload.single('resume'), UploadResume);
 router.delete('/delete/:id',  DeleteResume);
 
 

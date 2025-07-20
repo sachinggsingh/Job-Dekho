@@ -17,6 +17,7 @@ import { redis } from './helpers/redis';
 import routerUser from './routes/User';
 import routerJob from './routes/Job'
 import routerResume from './routes/Resume';
+import { authMiddleware } from "./middleware/auth.middleware";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -31,13 +32,11 @@ app.use(express.urlencoded({ extended: true }));
 app.get('/', (req: Request, res: Response) => {
   res.json({ msg: "Server running" });
 });
-// Serve static files for resumes
-// app.use('/uploads/resumes', express.static(path.join(__dirname, '../../uploads/resumes')));
 
 // API routes
 app.use('/api', routerUser);
 app.use('/api',routerJob);
-app.use('/api', routerResume);
+app.use('/api',authMiddleware, routerResume);
 
 // Initialize database and tables
 const initializeDatabase = async () => {
